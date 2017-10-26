@@ -1,44 +1,73 @@
 package client
 
+import (
+	"time"
+)
+
 // MyFxBookClient struct
 type MyFxBookClient struct {
-	Email    string
-	Password string
-	Session  string
+	email    string
+	password string
+	session  string
 }
 
 // NewClient create new myfxbook client
 func NewClient(email, password string) *MyFxBookClient {
 	return &MyFxBookClient{
-		Email:    email,
-		Password: password,
+		email:    email,
+		password: password,
 	}
 }
 
 // Login to account
-func (c *MyFxBookClient) Login() error {
+func (c *MyFxBookClient) Login() (*LoginResponse, error) {
 	var err error
 
 	loginResponseContainer := new(LoginResponse)
-	err = callGetRequest(getLoginURL(c.Email, c.Password), loginResponseContainer)
+	err = loadData(getLoginURL(c.email, c.password), loginResponseContainer)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	c.Session = loginResponseContainer.Session
-
-	return err
+	c.session = loginResponseContainer.Session
+	return loginResponseContainer, err
 }
 
 // Logout from account
-func (c *MyFxBookClient) Logout() error {
+func (c *MyFxBookClient) Logout() (*Response, error) {
 	var err error
 
 	logoutResponseContainer := new(Response)
-	err = callGetRequest(getLogoutURL(c.Session), logoutResponseContainer)
+	err = loadData(getLogoutURL(c.session), logoutResponseContainer)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return err
+	return logoutResponseContainer, err
+}
+
+// GetMyAccounts get a list of my accounts and their data
+func (c *MyFxBookClient) GetMyAccounts() (*GetMyAccountsResponse, error) {
+	var err error
+
+	getMyAccountsResponse := new(GetMyAccountsResponse)
+	err = loadData(getGetMyAccountsURL(c.session), getMyAccountsResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return getMyAccountsResponse, err
+}
+
+// FetchEconomicCalendar load Calendar
+func (c *MyFxBookClient) FetchEconomicCalendar(start, end time.Time) (calendarItems []*EconomicCalendarItem, err error) {
+	calendar := NewCalendar(c.email, c.password)
+
+	calendarItems, err = calendar.fetchCalendar(start, end)
+
+	if err != nil {
+		return
+	}
+
+	return
 }
