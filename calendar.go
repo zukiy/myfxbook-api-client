@@ -16,16 +16,16 @@ import (
 type Calendar struct {
 	email    string
 	password string
-	client   http.Client
+	client   *http.Client
 	cookie   []*http.Cookie
 }
 
 // NewCalendar return Calendar instance
-func NewCalendar(email, password string) *Calendar {
+func NewCalendar(email, password, proxy string) *Calendar {
 	return &Calendar{
 		email:    email,
 		password: password,
-		client:   http.Client{},
+		client:   createHTTPClient(proxy),
 	}
 }
 

@@ -80,7 +80,7 @@ func TestGetGetMyAccountsURL(t *testing.T) {
 }
 
 func TestLoadEconomicCalendar(t *testing.T) {
-	client := NewClient("e.mitroshin@space307.com", "asdQWE123")
+	client := NewClient("e.mitroshin@space307.com", "asdQWE123", "")
 	items, _ := client.FetchEconomicCalendar(timeFromString("2018-01-08 00:00"), timeFromString("2018-01-14 00:00"))
 	fmt.Printf("%+v", items)
 }
