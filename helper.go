@@ -1,12 +1,11 @@
 package client
 
 import (
-	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -26,40 +25,6 @@ func getSystemLoginURL(user, password string) string {
 	return fmt.Sprintf(userLoginURL, user, password)
 }
 
-func loadData(url string, responseContainer interface{}) error {
-	body, err := getRequest(url)
-	if err != nil {
-		return err
-	}
-
-	switch c := responseContainer.(type) {
-	case *LoginResponse, *Response, *GetMyAccountsResponse:
-		err = json.Unmarshal([]byte(body), c)
-	default:
-		return errors.New(ErrorInvalidResponseType)
-	}
-
-	return err
-}
-
-func getRequest(url string) ([]byte, error) {
-	var err error
-
-	response, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-
-	defer response.Body.Close()
-
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return body, err
-}
-
 func timeToString(t time.Time) string {
 	return t.Format("2006-01-02 00:00")
 }
@@ -71,6 +36,19 @@ func timeFromString(s string) time.Time {
 	}
 
 	return t
+}
+
+func createHTTPClient(proxy string) *http.Client {
+	httpClient := &http.Client{}
+
+	if strings.TrimSpace(proxy) != "" {
+		proxyURL, err := url.Parse(proxy)
+		if err == nil {
+			httpClient.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+		}
+	}
+
+	return httpClient
 }
 
 // UnmarshalXML unmarshal string to time
