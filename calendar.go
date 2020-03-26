@@ -35,6 +35,9 @@ func (c *Calendar) reLogin() (err error) {
 		return
 	}
 
+	req.Header.Set("Origin", "https://www.myfxbook.com")
+	req.Header.Set("Referer", "https://www.myfxbook.com")
+
 	rawResponse, err := c.client.Do(req)
 	if err != nil {
 		return
