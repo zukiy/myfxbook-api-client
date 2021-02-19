@@ -1,153 +1,244 @@
 package client
 
 import (
+	"bytes"
+	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 )
 
-// Calendar api
-type Calendar struct {
-	email    string
-	password string
-	client   *http.Client
-	cookie   []*http.Cookie
-}
-
-// NewCalendar return Calendar instance
-func NewCalendar(email, password, proxy string) *Calendar {
-	return &Calendar{
-		email:    email,
-		password: password,
-		client:   createHTTPClient(proxy),
-	}
-}
-
-func (c *Calendar) reLogin() (err error) {
-	req, err := http.NewRequest(http.MethodGet, getSystemLoginURL(c.email, c.password), nil)
-	if err != nil {
-		return
-	}
-
-	req.Header.Set("Origin", "https://www.myfxbook.com")
-	req.Header.Set("Referer", "https://www.myfxbook.com")
-
-	rawResponse, err := c.client.Do(req)
-	if err != nil {
-		return
-	}
-	defer rawResponse.Body.Close()
-
-	response, err := ioutil.ReadAll(rawResponse.Body)
-	if err != nil {
-		return
-	}
-
-	// Login responses
-	type XML struct {
+type (
+	// XMLAuthResponse model
+	XMLAuthResponse struct {
 		Error   bool   `xml:"error,attr"`
 		Code    string `xml:"code,attr"`
 		Message string `xml:"message,attr"`
 	}
 
-	x := &XML{}
-	err = xml.Unmarshal(response, x)
+	// NextPageResponse model
+	NextPageResponse struct {
+		Error   bool    `json:"error"`
+		Content Content `json:"content"`
+	}
+
+	// Content
+	Content struct {
+		Rows             []string `json:"rows"`
+		PageNumber       int      `json:"pageNumber"`
+		HasMore          bool     `json:"hasMore"`
+		NewCnt           int      `json:"newCnt"`
+		LastDay          string   `json:"lastDay"`
+		FutureEventFound int      `json:"futureEventFound"`
+	}
+
+	// Calendar engine
+	Calendar struct {
+		loc      *time.Location
+		email    string
+		password string
+		client   *http.Client
+		cookie   []*http.Cookie
+	}
+)
+
+// NewCalendar creates a economic calendar client, https://www.myfxbook.com/forex-economic-calendar
+func NewCalendar(email, password string, loc *time.Location) *Calendar {
+	return &Calendar{
+		email:    email,
+		password: password,
+		client:   &http.Client{},
+		loc:      loc,
+	}
+}
+
+// NewCalendarWithHTTPClient creates a economic calendar client by HTTP client
+func NewWithHTTPClient(email, password string, loc *time.Location, client *http.Client) *Calendar {
+	return &Calendar{
+		email:    email,
+		password: password,
+		client:   client,
+		loc:      loc,
+	}
+}
+
+func (c *Calendar) login() error {
+	var err error
+
+	form := map[string]string{
+		"loginEmail":    c.email,
+		"loginPassword": c.password,
+		"remember":      "false",
+		"z":             "0.5537966003240857",
+	}
+
+	headers := map[string]string{
+		"Origin":       "https://www.myfxbook.com",
+		"Referer":      "https://www.myfxbook.com",
+		"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+	}
+
+	response := XMLAuthResponse{}
+
+	err, cookie := c.postRequest(userLoginURL, form, headers, &response)
+	if err != nil {
+		return err
+	}
+
+	if response.Error {
+		return errors.Wrap(err, "login error")
+	}
+
+	// replacing the cookies slice
+	c.cookie = append(c.cookie[:0], cookie...)
+
+	return err
+}
+
+func (c *Calendar) fetchCalendarItems(start, end time.Time) (calendarItems []EconomicCalendarItem, err error) {
+	err = c.login()
 	if err != nil {
 		return
 	}
-
-	if x.Error {
-		err = errors.New(x.Message)
-		return
-	}
-
-	c.cookie = append(c.cookie, rawResponse.Cookies()...)
-
-	return
-}
-
-func (c *Calendar) fetchCalendar(start, end time.Time) (calendarItems []*EconomicCalendarItem, err error) {
-	calendarItems = make([]*EconomicCalendarItem, 0)
 
 	data, err := c.loadData(start, end)
 	if err != nil {
 		return
 	}
 
-	calendarItems, err = c.parseXML(data)
-	if err != nil {
-		return
-	}
-
+	calendarItems, err = parseHTML(data, c.loc)
 	return
 }
 
 func (c *Calendar) loadData(start, end time.Time) (data []byte, err error) {
-	err = c.reLogin()
+	var (
+		page int
+		buf  bytes.Buffer
+	)
+
+	buf.WriteString(`<table id="economicCalendarTable">`)
+
+	for {
+		payload := map[string]string{
+			"pageNumber":       strconv.Itoa(page),
+			"filter":           "0-1-2-3_ANG-ARS-AUD-BRL-CAD-CHF-CLP-CNY-COP-CZK-DKK-EEK-EUR-GBP-HKD-HUF-IDR-INR-ISK-JPY-KPW-KRW-MXN-NOK-NZD-PEI-PLN-QAR-ROL-RUB-SEK-SGD-TRY-USD-ZAR",
+			"start":            timeToString(start),
+			"end":              timeToString(end),
+			"cnt":              "40",
+			"futureEventFound": "1",
+			"isMobile":         "false",
+			"z":                "0.8090088713380079",
+			"lastDay":          end.Format("Monday, Jan 02, 2006"),
+		}
+
+		headers := map[string]string{
+			"referer": "https://www.myfxbook.com/",
+		}
+
+		response := NextPageResponse{}
+
+		if err = c.getRequest(calendarNextPageURL, payload, headers, &response); err != nil {
+			return nil, err
+		}
+
+		buf.Write([]byte(strings.Join(response.Content.Rows, ",")))
+
+		if !response.Content.HasMore {
+			break
+		}
+
+		page++
+	}
+
+	buf.WriteString(`</table>`)
+
+	return buf.Bytes(), nil
+}
+
+func (c *Calendar) postRequest(u string, payload, headers map[string]string, response interface{}) (error, []*http.Cookie) {
+	data := url.Values{}
+	for k, v := range payload {
+		data.Set(k, v)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, u, strings.NewReader(data.Encode()))
 	if err != nil {
-		return
+		return err, nil
 	}
 
-	p := map[string]string{
-		"start":     timeToString(start),
-		"end":       timeToString(end),
-		"calPeriod": "-1",
-		"filter":    "0-1-2-3_ANG-ARS-AUD-BRL-CAD-CHF-CLP-CNY-COP-CZK-DKK-EEK-EUR-GBP-HKD-HUF-IDR-INR-ISK-JPY-KPW-KRW-MXN-NOK-NZD-PEI-PLN-QAR-ROL-RUB-SEK-SGD-TRY-USD-ZAR",
-	}
-
-	m := make([]string, 0)
-	for key, value := range p {
-		m = append(m, fmt.Sprintf("%s=%s", key, value))
-	}
-
-	uri := strings.Join(m, "&")
-	t := &url.URL{Path: uri}
-
-	requestURL := fmt.Sprintf("%s%s", calendarURL, t.String()[2:])
-
-	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
-	if err != nil {
-		return
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 
 	for _, cookie := range c.cookie {
 		req.AddCookie(cookie)
 	}
 
-	response, err := c.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
-		return
-	}
-	defer response.Body.Close()
-
-	data, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		return
+		return err, nil
 	}
 
-	return
+	raw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err, nil
+	}
+
+	err = xml.Unmarshal(raw, response)
+	if err != nil {
+		return err, nil
+	}
+
+	return err, resp.Cookies()
 }
 
-func (c *Calendar) parseXML(data []byte) (content []*EconomicCalendarItem, err error) {
-	type Events struct {
-		Event []*EconomicCalendarItem `xml:"event"`
+func (c *Calendar) getRequest(u string, payload, headers map[string]string, response interface{}) error {
+	params := url.Values{}
+	for k, v := range payload {
+		params.Set(k, v)
 	}
 
-	type Response struct {
-		Error   bool   `xml:"error,attr"`
-		Message string `xml:"message,attr"`
-		Events  Events `xml:"events"`
+	req, err := http.NewRequest(http.MethodGet, u+params.Encode(), nil)
+	if err != nil {
+		return err
 	}
 
-	x := Response{}
-	err = xml.Unmarshal(data, &x)
-	content = x.Events.Event
+	for _, cookie := range c.cookie {
+		req.AddCookie(cookie)
+	}
 
-	return
+	for k, v := range headers {
+		req.Header[k] = []string{v}
+	}
+
+	for _, cookie := range c.cookie {
+		req.AddCookie(cookie)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if response == nil {
+		return nil
+	}
+
+	raw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		err = resp.Body.Close()
+	}()
+
+	err = json.Unmarshal(raw, response)
+	return err
 }
