@@ -16,7 +16,7 @@ type MyFxBookClient struct {
 	httpClient *http.Client
 }
 
-// NewClient create new myfxbook client
+// NewClient creates new myfxbook client
 func NewClient(email, password, proxy string) *MyFxBookClient {
 	return &MyFxBookClient{
 		email:      email,
@@ -105,14 +105,8 @@ func (c *MyFxBookClient) GetMyAccounts() (*GetMyAccountsResponse, error) {
 }
 
 // FetchEconomicCalendar load Calendar
-func (c *MyFxBookClient) FetchEconomicCalendar(start, end time.Time) (calendarItems []*EconomicCalendarItem, err error) {
-	calendar := NewCalendar(c.email, c.password, "")
-
-	calendarItems, err = calendar.fetchCalendar(start, end)
-
-	if err != nil {
-		return
-	}
-
+func (c *MyFxBookClient) FetchEconomicCalendar(start, end time.Time) (calendarItems []EconomicCalendarItem, err error) {
+	calendar := NewCalendar(c.email, c.password, time.UTC)
+	calendarItems, err = calendar.fetchCalendarItems(start, end)
 	return
 }
