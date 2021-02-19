@@ -1,4 +1,4 @@
-module bitbucket.org/mieval/myfxbook-api-client
+module github.com/mieval/myfxbook-api-client
 
 go 1.13
 
