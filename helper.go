@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/xml"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -19,10 +18,6 @@ func getLogoutURL(session string) string {
 
 func getGetMyAccountsURL(session string) string {
 	return apiURL + fmt.Sprintf(getMyAccountsURL, session)
-}
-
-func getSystemLoginURL(user, password string) string {
-	return fmt.Sprintf(userLoginURL, user, password)
 }
 
 func timeToString(t time.Time) string {
@@ -49,23 +44,4 @@ func createHTTPClient(proxy string) *http.Client {
 	}
 
 	return httpClient
-}
-
-// UnmarshalXML unmarshal string to time
-func (cd *CalendarDate) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error) {
-	var v string
-	layout := "2006, January 02, 15:04"
-
-	err = d.DecodeElement(&v, &start)
-	if err != nil {
-		return
-	}
-
-	t, err := time.Parse(layout, v)
-	if err != nil {
-		return
-	}
-
-	*cd = CalendarDate{t}
-	return
 }

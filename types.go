@@ -61,15 +61,10 @@ type Server struct {
 
 // EconomicCalendarItem model
 type EconomicCalendarItem struct {
-	Date     CalendarDate `xml:"date"`
-	Name     string       `xml:"name"`
-	Impact   string       `xml:"impact"`
-	Previous string       `xml:"previous"`
-	Actual   string       `xml:"actual"`
-	Currency string       `xml:"currency"`
-}
-
-// CalendarDate custom type
-type CalendarDate struct {
-	time.Time
+	Date     time.Time
+	Name     string
+	Impact   string
+	Previous string
+	Actual   string
+	Currency string
 }
