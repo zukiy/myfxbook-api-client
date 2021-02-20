@@ -2,9 +2,6 @@ package client
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
-	"strings"
 	"time"
 )
 
@@ -31,17 +28,4 @@ func timeFromString(s string) time.Time {
 	}
 
 	return t
-}
-
-func createHTTPClient(proxy string) *http.Client {
-	httpClient := &http.Client{}
-
-	if strings.TrimSpace(proxy) != "" {
-		proxyURL, err := url.Parse(proxy)
-		if err == nil {
-			httpClient.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
-		}
-	}
-
-	return httpClient
 }
