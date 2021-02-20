@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -82,8 +83,8 @@ func TestGetGetMyAccountsURL(t *testing.T) {
 }
 
 func TestLoadEconomicCalendar(t *testing.T) {
-	client := NewClient("", "", "")
-	items, err := client.FetchEconomicCalendar(timeFromString("2021-02-26 00:00"), timeFromString("2021-02-26 00:00"))
+	client := NewCalendar("", "", time.UTC)
+	items, err := client.FetchCalendarItems(timeFromString("2021-02-26 00:00"), timeFromString("2021-02-26 00:00"))
 	require.NoError(t, err)
-	fmt.Printf("%+v", items)
+	fmt.Printf("%d, %+v", len(items), items)
 }

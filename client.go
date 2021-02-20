@@ -14,14 +14,26 @@ type MyFxBookClient struct {
 	session  string
 
 	httpClient *http.Client
+	loc        *time.Location
 }
 
 // NewClient creates new myfxbook client
-func NewClient(email, password, proxy string) *MyFxBookClient {
+func NewClient(email, password string, loc *time.Location) *MyFxBookClient {
 	return &MyFxBookClient{
 		email:      email,
 		password:   password,
-		httpClient: createHTTPClient(proxy),
+		httpClient: &http.Client{},
+		loc:        loc,
+	}
+}
+
+// NewWithHTTPClient creates new myfxbook client by a custom HTTP client
+func NewWithHTTPClient(email, password string, loc *time.Location, client *http.Client) *MyFxBookClient {
+	return &MyFxBookClient{
+		email:      email,
+		password:   password,
+		httpClient: client,
+		loc:        loc,
 	}
 }
 
@@ -102,11 +114,4 @@ func (c *MyFxBookClient) GetMyAccounts() (*GetMyAccountsResponse, error) {
 	response := &GetMyAccountsResponse{}
 	err = json.Unmarshal(data, response)
 	return response, err
-}
-
-// FetchEconomicCalendar load Calendar
-func (c *MyFxBookClient) FetchEconomicCalendar(start, end time.Time) (calendarItems []EconomicCalendarItem, err error) {
-	calendar := NewCalendar(c.email, c.password, time.UTC)
-	calendarItems, err = calendar.fetchCalendarItems(start, end)
-	return
 }

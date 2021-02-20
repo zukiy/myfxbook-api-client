@@ -59,7 +59,7 @@ func NewCalendar(email, password string, loc *time.Location) *Calendar {
 }
 
 // NewCalendarWithHTTPClient creates a economic calendar client by HTTP client
-func NewWithHTTPClient(email, password string, loc *time.Location, client *http.Client) *Calendar {
+func NewCalendarWithHTTPClient(email, password string, loc *time.Location, client *http.Client) *Calendar {
 	return &Calendar{
 		email:    email,
 		password: password,
@@ -101,7 +101,8 @@ func (c *Calendar) login() error {
 	return err
 }
 
-func (c *Calendar) fetchCalendarItems(start, end time.Time) (calendarItems []EconomicCalendarItem, err error) {
+// FetchCalendarItems economic calendar's items
+func (c *Calendar) FetchCalendarItems(start, end time.Time) (calendarItems []EconomicCalendarItem, err error) {
 	err = c.login()
 	if err != nil {
 		return
