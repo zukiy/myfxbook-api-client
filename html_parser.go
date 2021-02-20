@@ -87,12 +87,11 @@ func extractEventDate(s *goquery.Selection, loc *time.Location) (time.Time, erro
 		return time.Time{}, ErrEventDateNoFound
 	}
 
-	dt, err := time.ParseInLocation("2006-01-02 15:04:05.9", ds, loc)
+	dt, err := time.ParseInLocation("2006-01-02 15:04:05.9", ds, time.UTC)
 	if err != nil {
 		return time.Time{}, ErrEventDateParseError
 	}
-
-	return dt, nil
+	return dt.In(loc), nil
 }
 
 func extractText(s *goquery.Selection) string {
