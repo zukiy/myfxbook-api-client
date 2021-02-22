@@ -11,15 +11,13 @@ import (
 
 const (
 	tdDate int = iota
-	_
-	_
+	tdTimeLeft
+	_ // country's flag
 	tdCurrency
 	tdEvent
 	tdImpact
-	_
-	_
-	_
-	_
+	tdPrevious
+	tdConsensus
 )
 
 var (
@@ -66,6 +64,9 @@ func parseEvent(s *goquery.Selection, loc *time.Location) (EconomicCalendarItem,
 				return
 			}
 
+		case tdTimeLeft:
+			m.TimeLeft = extractEventLeftTime(selection)
+
 		case tdCurrency:
 			m.Currency = extractText(selection)
 
@@ -75,6 +76,11 @@ func parseEvent(s *goquery.Selection, loc *time.Location) (EconomicCalendarItem,
 		case tdImpact:
 			m.Impact = extractImpact(selection)
 
+		case tdPrevious:
+			m.Previous = extractPrevious(selection)
+
+		case tdConsensus:
+			m.Consensus = extractConsensus(selection)
 		}
 	})
 
@@ -95,10 +101,22 @@ func extractEventDate(s *goquery.Selection, loc *time.Location) (time.Time, erro
 	return dt, nil
 }
 
+func extractEventLeftTime(s *goquery.Selection) string {
+	return strings.TrimSpace(s.Find("span.calendarLeft").Text())
+}
+
 func extractText(s *goquery.Selection) string {
 	return strings.TrimSpace(s.Text())
 }
 
 func extractImpact(s *goquery.Selection) string {
+	return strings.TrimSpace(s.Find("div").Text())
+}
+
+func extractPrevious(s *goquery.Selection) string {
+	return strings.TrimSpace(s.Find("span").Text())
+}
+
+func extractConsensus(s *goquery.Selection) string {
 	return strings.TrimSpace(s.Find("div").Text())
 }
