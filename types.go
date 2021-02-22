@@ -61,10 +61,12 @@ type Server struct {
 
 // EconomicCalendarItem model
 type EconomicCalendarItem struct {
-	Date     time.Time
-	Name     string
-	Impact   string
-	Previous string
-	Actual   string
-	Currency string
+	Date      time.Time
+	TimeLeft  string
+	Name      string
+	Impact    string
+	Actual    string
+	Currency  string
+	Previous  string
+	Consensus string
 }
