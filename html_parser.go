@@ -21,11 +21,14 @@ const (
 )
 
 var (
-	// ErrEventDateNoFound ...
-	ErrEventDateNoFound = errors.New("event time not found ")
+	// ErrEventsDateNoFound ...
+	ErrEventsDateNoFound = errors.New("event's time not found ")
 
-	// ErrEventDateParseError ...
-	ErrEventDateParseError = errors.New("event time parse error")
+	// ErrEventsDateParseError ...
+	ErrEventsDateParseError = errors.New("event's time parse error")
+
+	// ErrEventsDateIsZero ...
+	ErrEventsDateIsZero = errors.New("event's time is zero")
 )
 
 func parseHTML(htmlText []byte, loc *time.Location) ([]EconomicCalendarItem, error) {
@@ -90,12 +93,16 @@ func parseEvent(s *goquery.Selection, loc *time.Location) (EconomicCalendarItem,
 func extractEventDate(s *goquery.Selection, loc *time.Location) (time.Time, error) {
 	ds, ok := s.Find("div.calendarDateTd").Attr("data-calendardatetd")
 	if !ok {
-		return time.Time{}, ErrEventDateNoFound
+		return time.Time{}, ErrEventsDateNoFound
 	}
 
 	dt, err := time.ParseInLocation("2006-01-02 15:04:05.9", ds, loc)
 	if err != nil {
-		return time.Time{}, ErrEventDateParseError
+		return time.Time{}, ErrEventsDateParseError
+	}
+
+	if dt.IsZero() {
+		return dt, ErrEventsDateIsZero
 	}
 
 	return dt, nil
