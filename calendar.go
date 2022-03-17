@@ -103,10 +103,11 @@ func (c *Calendar) login() error {
 
 // FetchCalendarItems economic calendar's items
 func (c *Calendar) FetchCalendarItems(start, end time.Time) (calendarItems []EconomicCalendarItem, err error) {
-	err = c.login()
-	if err != nil {
-		return
-	}
+	// todo: server returns 301
+	//err = c.login()
+	//if err != nil {
+	//	return
+	//}
 
 	data, err := c.loadData(start, end)
 	if err != nil {

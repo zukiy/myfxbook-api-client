@@ -96,7 +96,7 @@ func extractEventDate(s *goquery.Selection, loc *time.Location) (time.Time, erro
 		return time.Time{}, ErrEventsDateNoFound
 	}
 
-	dt, err := time.ParseInLocation("2006-01-02 15:04:05.9", ds, loc)
+	dt, err := time.ParseInLocation("2006-01-02 15:04:05.9", ds, time.UTC)
 	if err != nil {
 		return time.Time{}, ErrEventsDateParseError
 	}
@@ -105,7 +105,7 @@ func extractEventDate(s *goquery.Selection, loc *time.Location) (time.Time, erro
 		return dt, ErrEventsDateIsZero
 	}
 
-	return dt, nil
+	return dt.In(loc), nil
 }
 
 func extractEventLeftTime(s *goquery.Selection) string {
